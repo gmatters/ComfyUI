@@ -1208,7 +1208,9 @@ export class ComfyApp {
 			this.graph._nodes.forEach((node) => {
                             if (node.getTitle() === detail.node) {
                                 if (node.widgets?.length > what) {
-                                    node.widgets[what].value = arg;
+                                    let widget = node.widgets[what];
+                                    widget.value = arg;
+                                    widget.callback?.(widget.value);
                                     console.log(`OSC: set node ${node.getTitle()} widget ${what} to arg ${arg}`);
                                 } else {
                                     console.warn(`node ${node.getTitle()} doesn't have enough widgets to index ${what}`);
