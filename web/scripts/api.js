@@ -133,6 +133,9 @@ class ComfyApi extends EventTarget {
 					    case "execution_cached":
 						    this.dispatchEvent(new CustomEvent("execution_cached", { detail: msg.data }));
 						    break;
+					    case "osc":
+						    this.dispatchEvent(new CustomEvent("osc", { detail: msg.data }));
+						    break;
 					    default:
 						    if (this.#registered.has(msg.type)) {
 							    this.dispatchEvent(new CustomEvent(msg.type, { detail: msg.data }));

@@ -1194,6 +1194,29 @@ export class ComfyApp {
 			})
 		});
 
+		api.addEventListener("osc", ({ detail }) => {
+                        // detail.node is intended to identify the node. Current matches the title
+                        // detail.what is intended to identify what to set
+                        // within the node. Current treated as the index of the
+                        // widget, but could possibly match the name or an
+                        // input name
+                        const what = detail.what;
+                        // Args is passed out to JS as an array to keep open
+                        // the possibility of multiple args, but currently only
+                        // the first arg is handled.
+                        const arg = detail.args[0];
+			this.graph._nodes.forEach((node) => {
+                            if (node.getTitle() === detail.node) {
+                                if (node.widgets?.length > what) {
+                                    node.widgets[what].value = arg;
+                                    console.log(`OSC: set node ${node.getTitle()} widget ${what} to arg ${arg}`);
+                                } else {
+                                    console.warn(`node ${node.getTitle()} doesn't have enough widgets to index ${what}`);
+                                }
+                            }
+			})
+		});
+
 		api.addEventListener("execution_error", ({ detail }) => {
 			this.lastExecutionError = detail;
 			const formattedError = this.#formatExecutionError(detail);

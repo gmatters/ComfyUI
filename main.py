@@ -75,6 +75,9 @@ from server import BinaryEventTypes
 from nodes import init_custom_nodes
 import comfy.model_management
 
+from pythonosc.dispatcher import Dispatcher
+from pythonosc.osc_server import AsyncIOOSCUDPServer
+
 def cuda_malloc_warning():
     device = comfy.model_management.get_torch_device()
     device_name = comfy.model_management.get_torch_device_name(device)
@@ -101,9 +104,22 @@ def prompt_worker(q, server):
         gc.collect()
         comfy.model_management.soft_empty_cache()
 
-async def run(server, address='', port=8188, verbose=True, call_on_start=None):
-    await asyncio.gather(server.start(address, port, verbose, call_on_start), server.publish_loop())
+async def run_all_servers(loop, server, address='', port=8188, verbose=True, call_on_start=None):
+    task_comfy = asyncio.create_task(server.start(address, port, verbose, call_on_start))
 
+    def osc_handler(address, *args):
+        print(f"OSC: {address}: {args}")
+        _, node, what = address.split('/')
+        server.send_sync("osc", { "node": node, "what": what, "args": args }, server.client_id)
+
+    dispatcher = Dispatcher()
+    dispatcher.set_default_handler(osc_handler)
+    oscserver = AsyncIOOSCUDPServer(("127.0.0.1", 8189), dispatcher, loop)
+    task_osc = asyncio.create_task(oscserver.create_serve_endpoint())
+    # TODO: create_serve_endpoint returns a coroutine which in turn returns (transport, protocol) and we should transport.close() during shutdown
+
+    tasks = [task_comfy, task_osc]
+    await asyncio.gather(*tasks, server.publish_loop())
 
 def hijack_progress(server):
     def hook(value, total, preview_image):
@@ -198,7 +214,7 @@ if __name__ == "__main__":
         call_on_start = startup_server
 
     try:
-        loop.run_until_complete(run(server, address=args.listen, port=args.port, verbose=not args.dont_print_server, call_on_start=call_on_start))
+        loop.run_until_complete(run_all_servers(loop, server, address=args.listen, port=args.port, verbose=not args.dont_print_server, call_on_start=call_on_start))
     except KeyboardInterrupt:
         print("\nStopped server")
 
