@@ -109,8 +109,8 @@ async def run_all_servers(loop, server, address='', port=8188, verbose=True, cal
 
     def osc_handler(address, *args):
         print(f"OSC: {address}: {args}")
-        _, node, what = address.split('/')
-        server.send_sync("osc", { "node": node, "what": what, "args": args }, server.client_id)
+        paths = address.split('/')[1:]
+        server.send_sync("osc", { "paths": paths, "args": args }, server.client_id)
 
     dispatcher = Dispatcher()
     dispatcher.set_default_handler(osc_handler)

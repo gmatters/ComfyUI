@@ -1195,26 +1195,17 @@ export class ComfyApp {
 		});
 
 		api.addEventListener("osc", ({ detail }) => {
-                        // detail.node is intended to identify the node. Current matches the title
-                        // detail.what is intended to identify what to set
-                        // within the node. Current treated as the index of the
-                        // widget, but could possibly match the name or an
-                        // input name
-                        const what = detail.what;
-                        // Args is passed out to JS as an array to keep open
-                        // the possibility of multiple args, but currently only
-                        // the first arg is handled.
-                        const arg = detail.args[0];
-                        if (detail.node === "canvas_print") {
+                        const paths = detail.paths;
+                        if (paths[0] === "canvas_print") {
                           console.log(`Canvas offset ${this.canvas.ds.offset} scale ${this.canvas.ds.scale}`);
                           return;
                         }
-                        if (detail.node === "canvas_zoom") {
-                          this.canvas.ds.changeScale( arg ); // changeScale without x,y reference might put nodes offscreen
+                        if (paths[0] === "canvas_zoom") {
+                          this.canvas.ds.changeScale(arg); // changeScale without x,y reference might put nodes offscreen
                           this.graph.change();
                           return;
                         }
-                        if (detail.node === "canvas_offset_zoom") {
+                        if (paths[0] === "canvas_offset_zoom") {
                           this.canvas.ds.offset[0] = detail.args[0];
                           this.canvas.ds.offset[1] = detail.args[1];
                           this.canvas.ds.scale = detail.args[2];
@@ -1222,8 +1213,19 @@ export class ComfyApp {
                           this.canvas.dirty_bgcanvas = true;
                           return;
                         }
+                        // 'which' identifies the node. Currently matches the title
+                        // 'what' is intended to identify what to set
+                        // within the node. Current treated as the index of the
+                        // widget, but could possibly match the widgetname, an
+                        // input name, etc
+                        const which = detail.paths[0];
+                        const what = detail.paths[1];
+                        // Args is passed out to JS as an array to keep open
+                        // the possibility of multiple args, but currently only
+                        // the first arg is handled.
+                        const arg = detail.args[0];
 			this.graph._nodes.forEach((node) => {
-                            if (node.getTitle() === detail.node) {
+                            if (node.getTitle() === which) {
                                 if (node.widgets?.length > what) {
                                     let widget = node.widgets[what];
                                     widget.value = arg;
