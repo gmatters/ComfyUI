@@ -1205,6 +1205,23 @@ export class ComfyApp {
                         // the possibility of multiple args, but currently only
                         // the first arg is handled.
                         const arg = detail.args[0];
+                        if (detail.node === "canvas_print") {
+                          console.log(`Canvas offset ${this.canvas.ds.offset} scale ${this.canvas.ds.scale}`);
+                          return;
+                        }
+                        if (detail.node === "canvas_zoom") {
+                          this.canvas.ds.changeScale( arg ); // changeScale without x,y reference might put nodes offscreen
+                          this.graph.change();
+                          return;
+                        }
+                        if (detail.node === "canvas_offset_zoom") {
+                          this.canvas.ds.offset[0] = detail.args[0];
+                          this.canvas.ds.offset[1] = detail.args[1];
+                          this.canvas.ds.scale = detail.args[2];
+                          this.canvas.dirty_canvas = true;
+                          this.canvas.dirty_bgcanvas = true;
+                          return;
+                        }
 			this.graph._nodes.forEach((node) => {
                             if (node.getTitle() === detail.node) {
                                 if (node.widgets?.length > what) {
