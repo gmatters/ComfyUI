@@ -1,0 +1,37 @@
+Geoff's ComfyUI Tweaks
+=======
+
+## Requirements
+
+Download this branch, patch changes onto upstream HEAD, or patch into self-contained ComfyUI
+
+If missing, install python-osc
+
+## OSC
+
+Comfy runs an OSC server on port 8189
+
+Send messages in the format /which/what value
+
+Where 'which' is the title of the node, 'what' is the index of the widget, and 'value' is the value to set that widget to.
+
+For instance, the following messages work against the default graph:
+
+- /Empty Latent Image/0 256    # Sets width
+- /Empty Latent Image/1 256    # Sets height
+- /KSampler/2 23               # Sets number of steps
+- /CLIP Text Encode (Prompt)/0 "bottle, galaxy, purple"  # sets prompt
+
+Note that you can edit the titles of nodes in Comfy using the Properties panel to ensure unique titles for each node. In the default graph there are two nodes titled "/CLIP Text Encode (Prompt)/0" and the above OSC message only works as expected because the positive prompt is encountered first when iterating the nodes.
+
+
+## Framing
+
+There are additional OSC message to control the framing of the graph in the ComfyUI:
+
+- /canvas_print   # prints the current x, y, and zoom to the javascript console (view on chrome by opening "More Tools -> Developer Tools")
+- /canvas_offset_zoom 0.0 0.0 1.0   # Sets x and y offset and zoom level
+
+These are performant enough to drive with e.g. 30 messages per second, driven from a smoothing algorithm or curve in a timeline
+ 
+
