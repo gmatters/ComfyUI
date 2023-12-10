@@ -3,7 +3,7 @@ Geoff's ComfyUI Tweaks
 
 ## Requirements
 
-Download this branch, patch changes onto upstream HEAD, or patch into self-contained ComfyUI
+Download this branch, patch changes onto upstream HEAD, or patch into self-contained ComfyUI (detailed patching instructions TBD)
 
 If missing, install python-osc
 
@@ -23,6 +23,8 @@ For instance, the following messages work against the default graph:
 - /CLIP Text Encode (Prompt)/0 "bottle, galaxy, purple"  # sets prompt
 
 Note that you can edit the titles of nodes in Comfy using the Properties panel to ensure unique titles for each node. In the default graph there are two nodes titled "/CLIP Text Encode (Prompt)/0" and the above OSC message only works as expected because the positive prompt is encountered first when iterating the nodes.
+
+To control something which is an input rather than a widget, use ComfyUI menu's Add Node -> utils -> Primitive option to create a Primitive Node, give it a unique title, connect it to the input you want to control, and drive it's widget via OSC.
 
 
 ## Framing
