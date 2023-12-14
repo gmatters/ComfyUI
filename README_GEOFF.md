@@ -7,6 +7,16 @@ Download this branch, patch changes onto upstream HEAD, or patch into self-conta
 
 If missing, install python-osc
 
+## Patching a self-contained install to include geoff's changes
+
+- double-click ComfyUI_windows_portable\update\update_comfyui_and_python_dependencies.bat as a sanity check that updates are working
+- Download .ci/update_geoff.py from this (geoff's) repo
+- rename to update.py
+- use this to overwrite the file update.py in ComfyUI_windows_portable\update\
+- double-click ComfyUI_windows_portable\update\update_comfyui_and_python_dependencies.bat
+
+This will update the self-contained install to geoff's HEAD. If geoff's HEAD is behind the state of origin when self-contained was built, some features may be rewound. An alternate solution is to generate a patch of changes to geoff's branch and apply it to the self-contained code, although that will also stop working once there is a merge conflict.
+
 ## OSC
 
 Comfy runs an OSC server on port 8189
