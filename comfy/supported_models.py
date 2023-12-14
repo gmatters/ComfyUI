@@ -71,6 +71,10 @@ class SD20(supported_models_base.BASE):
         return model_base.ModelType.EPS
 
     def process_clip_state_dict(self, state_dict):
+        replace_prefix = {}
+        replace_prefix["conditioner.embedders.0.model."] = "cond_stage_model.model." #SD2 in sgm format
+        state_dict = utils.state_dict_prefix_replace(state_dict, replace_prefix)
+
         state_dict = utils.transformers_convert(state_dict, "cond_stage_model.model.", "cond_stage_model.clip_h.transformer.text_model.", 24)
         return state_dict
 
@@ -213,6 +217,16 @@ class SSD1B(SDXL):
         "use_temporal_attention": False,
     }
 
+class Segmind_Vega(SDXL):
+    unet_config = {
+        "model_channels": 320,
+        "use_linear_in_transformer": True,
+        "transformer_depth": [0, 0, 1, 1, 2, 2],
+        "context_dim": 2048,
+        "adm_in_channels": 2816,
+        "use_temporal_attention": False,
+    }
+
 class SVD_img2vid(supported_models_base.BASE):
     unet_config = {
         "model_channels": 320,
@@ -238,5 +252,5 @@ class SVD_img2vid(supported_models_base.BASE):
     def clip_target(self):
         return None
 
-models = [SD15, SD20, SD21UnclipL, SD21UnclipH, SDXLRefiner, SDXL, SSD1B]
+models = [SD15, SD20, SD21UnclipL, SD21UnclipH, SDXLRefiner, SDXL, SSD1B, Segmind_Vega]
 models += [SVD_img2vid]
