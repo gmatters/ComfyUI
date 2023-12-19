@@ -1221,6 +1221,26 @@ export class ComfyApp {
                           this.graph.change();
                           return;
                         }
+                        if (paths[0] === "canvas_save") {
+                          let key = detail.args[0];
+                          let save = [this.canvas.ds.offset[0], this.canvas.ds.offset[1],  this.canvas.ds.scale];
+                          this.canvasStates[key] = save;
+                          return;
+                        }
+                        if (paths[0] === "canvas_load") {
+                          let key = detail.args[0];
+                          if (key in this.canvasStates) {
+                            let load = this.canvasStates[key];
+                            this.canvas.ds.offset[0] = load[0];
+                            this.canvas.ds.offset[1] = load[1];
+                            this.canvas.ds.scale = load[2];
+                            this.canvas.dirty_canvas = true;
+                            this.canvas.dirty_bgcanvas = true;
+                          } else {
+                            console.warn(`canvas_load missing key ${key}`);
+                          }
+                          return;
+                        }
                         if (paths[0] === "canvas_offset_zoom") {
                           this.canvas.ds.offset[0] = detail.args[0];
                           this.canvas.ds.offset[1] = detail.args[1];
@@ -1360,6 +1380,7 @@ export class ComfyApp {
 
 		const canvas = (this.canvas = new LGraphCanvas(canvasEl, this.graph));
 		this.ctx = canvasEl.getContext("2d");
+                this.canvasStates = {}
 
 		LiteGraph.release_link_on_empty_shows_menu = true;
 		LiteGraph.alt_drag_do_clone_nodes = true;
@@ -1631,6 +1652,7 @@ export class ComfyApp {
                   this.canvas.ds.scale = graphData.extra.canvas.scale;
                   this.canvas.dirty_canvas = true;
                   this.canvas.dirty_bgcanvas = true;
+                  this.canvasStates = graphData.extra.canvasStates;
                 }
 
 		const missingNodeTypes = [];
@@ -1763,7 +1785,8 @@ export class ComfyApp {
                 // define onSerialize, it should be safe to write to extra..
                 workflow.extra = {'canvas': {'x': this.canvas.ds.offset[0],
                                              'y': this.canvas.ds.offset[1],
-                                             'scale': this.canvas.ds.scale }};
+                                             'scale': this.canvas.ds.scale },
+                                  'canvasStates': this.canvasStates};
 		const output = {};
 		// Process nodes in order of execution
 		for (const outerNode of this.graph.computeExecutionOrder(false)) {
