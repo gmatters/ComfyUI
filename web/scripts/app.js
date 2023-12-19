@@ -1624,6 +1624,15 @@ export class ComfyApp {
 			graphData = structuredClone(graphData);
 		}
 
+                if ('canvas' in graphData.extra)
+                {
+                  this.canvas.ds.offset[0] = graphData.extra.canvas.x;
+                  this.canvas.ds.offset[1] = graphData.extra.canvas.y;
+                  this.canvas.ds.scale = graphData.extra.canvas.scale;
+                  this.canvas.dirty_canvas = true;
+                  this.canvas.dirty_bgcanvas = true;
+                }
+
 		const missingNodeTypes = [];
 		await this.#invokeExtensionsAsync("beforeConfigureGraph", graphData, missingNodeTypes);
 		for (let n of graphData.nodes) {
@@ -1748,6 +1757,13 @@ export class ComfyApp {
 		}
 
 		const workflow = this.graph.serialize();
+                // GEOFF: Should possibly use onSerialize() callback to add extra
+                // info, but on the other hand doing it manually ensures the
+                // extra data only gets added to save. As long as Comfy doesn't
+                // define onSerialize, it should be safe to write to extra..
+                workflow.extra = {'canvas': {'x': this.canvas.ds.offset[0],
+                                             'y': this.canvas.ds.offset[1],
+                                             'scale': this.canvas.ds.scale }};
 		const output = {};
 		// Process nodes in order of execution
 		for (const outerNode of this.graph.computeExecutionOrder(false)) {
