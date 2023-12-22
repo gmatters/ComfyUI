@@ -36,6 +36,8 @@ There are additional OSC messages to control the framing of the graph in the Com
 
 - /canvas_print   # print the current x, y, and zoom to the javascript console (view on chrome by opening "More Tools -> Developer Tools")
 - /canvas_offset_zoom 0.0 0.0 1.0   # Set x and y offset and zoom level
+- /canvas_save foo    # Save current canvas framing (offset and zoom) with name 'foo'
+- /canvas_load bar    # Load canvas framing previously saved with name 'bar'
 
 These are performant enough to drive with e.g. 30 OSC messages per second, from a smoothing algorithm or curve in a timeline
 
