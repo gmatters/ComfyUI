@@ -1231,11 +1231,7 @@ export class ComfyApp {
                           let key = detail.args[0];
                           if (key in this.canvasStates) {
                             let load = this.canvasStates[key];
-                            this.canvas.ds.offset[0] = load[0];
-                            this.canvas.ds.offset[1] = load[1];
-                            this.canvas.ds.scale = load[2];
-                            this.canvas.dirty_canvas = true;
-                            this.canvas.dirty_bgcanvas = true;
+                            this.setCanvasFrame(load[0], load[1], load[2]);
                           } else {
                             console.warn(`canvas_load missing key ${key}`);
                           }
@@ -1380,7 +1376,9 @@ export class ComfyApp {
 
 		const canvas = (this.canvas = new LGraphCanvas(canvasEl, this.graph));
 		this.ctx = canvasEl.getContext("2d");
-                this.canvasStates = {}
+                this.canvasStates = {};
+                this.canvasMotion = [0, 0, 0, 0];  // [dx, dy, ds, steps]
+		setInterval(() => this.smoothCanvasTarget(), 20);
 
 		LiteGraph.release_link_on_empty_shows_menu = true;
 		LiteGraph.alt_drag_do_clone_nodes = true;
@@ -1434,6 +1432,31 @@ export class ComfyApp {
 
 		await this.#invokeExtensionsAsync("setup");
 	}
+
+	/**
+	 * Smooth canvas animation. Will override manual movement until it finishes.
+	 */
+        smoothCanvasTarget() {
+          if (this.canvasMotion != undefined && this.canvasMotion[3] > 0) {
+            this.canvas.ds.offset[0] += this.canvasMotion[0];
+            this.canvas.ds.offset[1] += this.canvasMotion[1]
+            this.canvas.ds.scale += this.canvasMotion[2];
+            this.canvasMotion[3] -= 1;
+            this.canvas.dirty_canvas = true;
+            this.canvas.dirty_bgcanvas = true;
+          }
+        }
+
+	/**
+	 * Set canvas framing (x, y, scale)
+	 */
+        setCanvasFrame(x, y, s) {
+          let steps = 50.0;
+          let dx = (x - this.canvas.ds.offset[0]) / steps;
+          let dy = (y - this.canvas.ds.offset[1]) / steps;
+          let ds = (s - this.canvas.ds.scale) / steps;
+          this.canvasMotion = [dx, dy, ds, steps];
+        }
 
 	/**
 	 * Registers nodes with the graph
