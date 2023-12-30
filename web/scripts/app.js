@@ -1377,7 +1377,7 @@ export class ComfyApp {
 		const canvas = (this.canvas = new LGraphCanvas(canvasEl, this.graph));
 		this.ctx = canvasEl.getContext("2d");
                 this.canvasStates = {};
-                this.canvasMotion = [0, 0, 0, 0];  // [dx, dy, ds, steps]
+                this.canvasMotionSteps = [];  // [[dx, dy, ds]];
 		setInterval(() => this.smoothCanvasTarget(), 20);
 
 		LiteGraph.release_link_on_empty_shows_menu = true;
@@ -1437,11 +1437,11 @@ export class ComfyApp {
 	 * Smooth canvas animation. Will override manual movement until it finishes.
 	 */
         smoothCanvasTarget() {
-          if (this.canvasMotion != undefined && this.canvasMotion[3] > 0) {
-            this.canvas.ds.offset[0] += this.canvasMotion[0];
-            this.canvas.ds.offset[1] += this.canvasMotion[1]
-            this.canvas.ds.scale += this.canvasMotion[2];
-            this.canvasMotion[3] -= 1;
+          if (this.canvasMotionSteps?.length > 0) {
+            let stepFrame = this.canvasMotionSteps.shift();
+            this.canvas.ds.offset[0] = stepFrame[0];
+            this.canvas.ds.offset[1] = stepFrame[1]
+            this.canvas.ds.scale = stepFrame[2];
             this.canvas.dirty_canvas = true;
             this.canvas.dirty_bgcanvas = true;
           }
@@ -1452,10 +1452,24 @@ export class ComfyApp {
 	 */
         setCanvasFrame(x, y, s) {
           let steps = 50.0;
-          let dx = (x - this.canvas.ds.offset[0]) / steps;
-          let dy = (y - this.canvas.ds.offset[1]) / steps;
-          let ds = (s - this.canvas.ds.scale) / steps;
-          this.canvasMotion = [dx, dy, ds, steps];
+
+          // https://easings.net/#easeInOutQuad
+          function easeInOutQuad(x) {
+            return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+          }
+
+          function lerp(a, b, p) {
+            return a + (b - a) * p;
+          }
+
+          this.canvasMotionSteps = [];  // No attempt to smooth from an in-progress motion
+          for (let i = 0; i <= steps; i++) {
+            let progress = easeInOutQuad(i / steps);
+            let tx = lerp(this.canvas.ds.offset[0], x, progress);
+            let ty = lerp(this.canvas.ds.offset[1], y, progress);
+            let ts = lerp(this.canvas.ds.scale, s, progress);
+            this.canvasMotionSteps.push([tx, ty, ts]);
+          }
         }
 
 	/**
