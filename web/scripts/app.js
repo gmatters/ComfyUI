@@ -1214,6 +1214,9 @@ export class ComfyApp {
                         const paths = detail.paths;
                         if (paths[0] === "canvas_print") {
                           console.log(`Canvas offset ${this.canvas.ds.offset} scale ${this.canvas.ds.scale}`);
+                          let center = this.offsetToCenter(this.canvas.ds.offset, this.canvas.ds.scale);
+                          let offset = this.centerToOffset(center, this.canvas.ds.scale);
+                          console.log(`Canvas center ${center} offset(center) ${offset}`);
                           return;
                         }
                         if (paths[0] === "canvas_zoom") {
@@ -1377,7 +1380,7 @@ export class ComfyApp {
 		const canvas = (this.canvas = new LGraphCanvas(canvasEl, this.graph));
 		this.ctx = canvasEl.getContext("2d");
                 this.canvasStates = {};
-                this.canvasMotionSteps = [];  // [[dx, dy, ds]];
+                this.canvasMotionSteps = [];  // [[center_x, center_y, scale]];
 		setInterval(() => this.smoothCanvasTarget(), 20);
 
 		LiteGraph.release_link_on_empty_shows_menu = true;
@@ -1433,14 +1436,34 @@ export class ComfyApp {
 		await this.#invokeExtensionsAsync("setup");
 	}
 
+        // Offset is upper left corner of visible graph.
+        // Moving down,right increases offset x,y
+        // Smallest squares of graph are 10 graph units (offset units) larger are 100
+
+        offsetToCenter(offset, scale) {
+          // Return value is in the same basis as offset, but points to center of visible portion of graph.
+          let rect = this.canvas.ds.element.getBoundingClientRect();  // Size of window in onscreen pixels, does not change with pan and zoom of graph
+          var center = [offset[0], offset[1]];
+          center[0] -= rect.width / 2 / scale;
+          center[1] -= rect.height / 2 / scale;
+          return center;
+        }
+
+        centerToOffset(center, scale) {
+          let rect = this.canvas.ds.element.getBoundingClientRect();  // Size of window, does not change with pan and zoom of graph
+          var offset = [center[0], center[1]];
+          offset[0] += rect.width / 2 / scale;
+          offset[1] += rect.height / 2 / scale;
+          return offset;
+        }
+
 	/**
 	 * Smooth canvas animation. Will override manual movement until it finishes.
 	 */
         smoothCanvasTarget() {
           if (this.canvasMotionSteps?.length > 0) {
             let stepFrame = this.canvasMotionSteps.shift();
-            this.canvas.ds.offset[0] = stepFrame[0];
-            this.canvas.ds.offset[1] = stepFrame[1]
+            this.canvas.ds.offset = this.centerToOffset([stepFrame[0], stepFrame[1]], stepFrame[2]);
             this.canvas.ds.scale = stepFrame[2];
             this.canvas.dirty_canvas = true;
             this.canvas.dirty_bgcanvas = true;
@@ -1463,10 +1486,12 @@ export class ComfyApp {
           }
 
           this.canvasMotionSteps = [];  // No attempt to smooth from an in-progress motion
+          var begin_center = this.offsetToCenter(this.canvas.ds.offset, this.canvas.ds.scale);
+          var end_center = this.offsetToCenter([x,y], s);
           for (let i = 0; i <= steps; i++) {
             let progress = easeInOutQuad(i / steps);
-            let tx = lerp(this.canvas.ds.offset[0], x, progress);
-            let ty = lerp(this.canvas.ds.offset[1], y, progress);
+            let tx = lerp(begin_center[0], end_center[0], progress);
+            let ty = lerp(begin_center[1], end_center[1], progress);
             let ts = lerp(this.canvas.ds.scale, s, progress);
             this.canvasMotionSteps.push([tx, ty, ts]);
           }
