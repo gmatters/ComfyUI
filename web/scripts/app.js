@@ -1929,10 +1929,19 @@ export class ComfyApp {
 					}
 				}
 
-				output[String(node.id)] = {
+				let node_data = {
 					inputs,
 					class_type: node.comfyClass,
 				};
+
+				if (this.ui.settings.getSettingValue("Comfy.DevMode")) {
+					// Ignored by the backend.
+					node_data["_meta"] = {
+						title: node.title,
+					}
+				}
+
+				output[String(node.id)] = node_data;
 			}
 		}
 
@@ -2159,12 +2168,8 @@ export class ComfyApp {
 	async refreshComboInNodes() {
 		const defs = await api.getNodeDefs();
 
-		for(const nodeId in LiteGraph.registered_node_types) {
-			const node = LiteGraph.registered_node_types[nodeId];
-			const nodeDef = defs[nodeId];
-			if(!nodeDef) continue;
-
-			node.nodeData = nodeDef;
+		for (const nodeId in defs) {
+			this.registerNodeDef(nodeId, defs[nodeId]);
 		}
 
 		for(let nodeNum in this.graph._nodes) {

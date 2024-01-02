@@ -2,6 +2,7 @@ from .k_diffusion import sampling as k_diffusion_sampling
 from .extra_samplers import uni_pc
 import torch
 import enum
+import collections
 from comfy import model_management
 import math
 from comfy import model_base
@@ -61,9 +62,7 @@ def get_area_and_mult(conds, x_in, timestep_in):
     for c in model_conds:
         conditioning[c] = model_conds[c].process_cond(batch_size=x_in.shape[0], device=x_in.device, area=area)
 
-    control = None
-    if 'control' in conds:
-        control = conds['control']
+    control = conds.get('control', None)
 
     patches = None
     if 'gligen' in conds:
@@ -78,7 +77,8 @@ def get_area_and_mult(conds, x_in, timestep_in):
 
         patches['middle_patch'] = [gligen_patch]
 
-    return (input_x, mult, conditioning, area, control, patches)
+    cond_obj = collections.namedtuple('cond_obj', ['input_x', 'mult', 'conditioning', 'area', 'control', 'patches'])
+    return cond_obj(input_x, mult, conditioning, area, control, patches)
 
 def cond_equal_size(c1, c2):
     if c1 is c2:
@@ -91,24 +91,24 @@ def cond_equal_size(c1, c2):
     return True
 
 def can_concat_cond(c1, c2):
-    if c1[0].shape != c2[0].shape:
+    if c1.input_x.shape != c2.input_x.shape:
         return False
 
-    #control
-    if (c1[4] is None) != (c2[4] is None):
-        return False
-    if c1[4] is not None:
-        if c1[4] is not c2[4]:
+    def objects_concatable(obj1, obj2):
+        if (obj1 is None) != (obj2 is None):
             return False
+        if obj1 is not None:
+            if obj1 is not obj2:
+                return False
+        return True
 
-    #patches
-    if (c1[5] is None) != (c2[5] is None):
+    if not objects_concatable(c1.control, c2.control):
         return False
-    if (c1[5] is not None):
-        if c1[5] is not c2[5]:
-            return False
 
-    return cond_equal_size(c1[2], c2[2])
+    if not objects_concatable(c1.patches, c2.patches):
+        return False
+
+    return cond_equal_size(c1.conditioning, c2.conditioning)
 
 def cond_cat(c_list):
     c_crossattn = []
@@ -184,13 +184,13 @@ def calc_cond_uncond_batch(model, cond, uncond, x_in, timestep, model_options):
         for x in to_batch:
             o = to_run.pop(x)
             p = o[0]
-            input_x += [p[0]]
-            mult += [p[1]]
-            c += [p[2]]
-            area += [p[3]]
-            cond_or_uncond += [o[1]]
-            control = p[4]
-            patches = p[5]
+            input_x.append(p.input_x)
+            mult.append(p.mult)
+            c.append(p.conditioning)
+            area.append(p.area)
+            cond_or_uncond.append(o[1])
+            control = p.control
+            patches = p.patches
 
         batch_chunks = len(cond_or_uncond)
         input_x = torch.cat(input_x)
@@ -244,14 +244,15 @@ def calc_cond_uncond_batch(model, cond, uncond, x_in, timestep, model_options):
 #The main sampling function shared by all the samplers
 #Returns denoised
 def sampling_function(model, x, timestep, uncond, cond, cond_scale, model_options={}, seed=None):
-        if math.isclose(cond_scale, 1.0):
+        if math.isclose(cond_scale, 1.0) and model_options.get("disable_cfg1_optimization", False) == False:
             uncond_ = None
         else:
             uncond_ = uncond
 
         cond_pred, uncond_pred = calc_cond_uncond_batch(model, cond, uncond_, x, timestep, model_options)
         if "sampler_cfg_function" in model_options:
-            args = {"cond": x - cond_pred, "uncond": x - uncond_pred, "cond_scale": cond_scale, "timestep": timestep, "input": x, "sigma": timestep}
+            args = {"cond": x - cond_pred, "uncond": x - uncond_pred, "cond_scale": cond_scale, "timestep": timestep, "input": x, "sigma": timestep,
+                    "cond_denoised": cond_pred, "uncond_denoised": uncond_pred, "model": model, "model_options": model_options}
             cfg_result = x - model_options["sampler_cfg_function"](args)
         else:
             cfg_result = uncond_pred + (cond_pred - uncond_pred) * cond_scale
@@ -598,6 +599,13 @@ def sample(model, noise, positive, negative, cfg, device, sampler, sigmas, model
     calculate_start_end_timesteps(model, negative)
     calculate_start_end_timesteps(model, positive)
 
+    if latent_image is not None:
+        latent_image = model.process_latent_in(latent_image)
+
+    if hasattr(model, 'extra_conds'):
+        positive = encode_model_conds(model.extra_conds, positive, noise, device, "positive", latent_image=latent_image, denoise_mask=denoise_mask)
+        negative = encode_model_conds(model.extra_conds, negative, noise, device, "negative", latent_image=latent_image, denoise_mask=denoise_mask)
+
     #make sure each cond area has an opposite one with the same area
     for c in positive:
         create_cond_with_same_area_if_none(negative, c)
@@ -608,13 +616,6 @@ def sample(model, noise, positive, negative, cfg, device, sampler, sigmas, model
 
     apply_empty_x_to_equal_area(list(filter(lambda c: c.get('control_apply_to_uncond', False) == True, positive)), negative, 'control', lambda cond_cnets, x: cond_cnets[x])
     apply_empty_x_to_equal_area(positive, negative, 'gligen', lambda cond_cnets, x: cond_cnets[x])
-
-    if latent_image is not None:
-        latent_image = model.process_latent_in(latent_image)
-
-    if hasattr(model, 'extra_conds'):
-        positive = encode_model_conds(model.extra_conds, positive, noise, device, "positive", latent_image=latent_image, denoise_mask=denoise_mask)
-        negative = encode_model_conds(model.extra_conds, negative, noise, device, "negative", latent_image=latent_image, denoise_mask=denoise_mask)
 
     extra_args = {"cond":positive, "uncond":negative, "cond_scale": cfg, "model_options": model_options, "seed":seed}
 
