@@ -1380,7 +1380,7 @@ export class ComfyApp {
 		const canvas = (this.canvas = new LGraphCanvas(canvasEl, this.graph));
 		this.ctx = canvasEl.getContext("2d");
                 this.canvasStates = {};
-                this.canvasMotionSteps = [];  // [[center_x, center_y, scale]];
+                this.canvasMotionSteps = [];  // [[offset, scale], ];
 		setInterval(() => this.smoothCanvasTarget(), 20);
 
 		LiteGraph.release_link_on_empty_shows_menu = true;
@@ -1463,8 +1463,8 @@ export class ComfyApp {
         smoothCanvasTarget() {
           if (this.canvasMotionSteps?.length > 0) {
             let stepFrame = this.canvasMotionSteps.shift();
-            this.canvas.ds.offset = this.centerToOffset([stepFrame[0], stepFrame[1]], stepFrame[2]);
-            this.canvas.ds.scale = stepFrame[2];
+            this.canvas.ds.offset = stepFrame[0];
+            this.canvas.ds.scale = stepFrame[1];
             this.canvas.dirty_canvas = true;
             this.canvas.dirty_bgcanvas = true;
           }
@@ -1495,7 +1495,8 @@ export class ComfyApp {
             let tx = lerp(begin_center[0], end_center[0], progress);
             let ty = lerp(begin_center[1], end_center[1], progress);
             let ts = Math.pow(10, lerp(begin_log_scale, end_log_scale, progress));
-            this.canvasMotionSteps.push([tx, ty, ts]);
+            let offset = this.centerToOffset([tx, ty], ts);
+            this.canvasMotionSteps.push([offset, ts]);
           }
         }
 
