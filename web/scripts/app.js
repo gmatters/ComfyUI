@@ -1488,11 +1488,13 @@ export class ComfyApp {
           this.canvasMotionSteps = [];  // No attempt to smooth from an in-progress motion
           var begin_center = this.offsetToCenter(this.canvas.ds.offset, this.canvas.ds.scale);
           var end_center = this.offsetToCenter([x,y], s);
+          var begin_log_scale = Math.log10(this.canvas.ds.scale);
+          var end_log_scale = Math.log10(s);
           for (let i = 0; i <= steps; i++) {
             let progress = easeInOutQuad(i / steps);
             let tx = lerp(begin_center[0], end_center[0], progress);
             let ty = lerp(begin_center[1], end_center[1], progress);
-            let ts = lerp(this.canvas.ds.scale, s, progress);
+            let ts = Math.pow(10, lerp(begin_log_scale, end_log_scale, progress));
             this.canvasMotionSteps.push([tx, ty, ts]);
           }
         }
