@@ -39,7 +39,9 @@ There are additional OSC messages to control the framing of the graph in the Com
 - /canvas_save foo    # Save current canvas framing (offset and zoom) with name 'foo'
 - /canvas_load bar    # Load canvas framing previously saved with name 'bar'
 
-These are performant enough to drive with e.g. 30 OSC messages per second, from a smoothing algorithm or curve in a timeline
+canvas_offset_zoom is performant enough to drive with e.g. 30 OSC messages per second, from a smoothing algorithm or curve in a timeline. canvas_load applies smoothing on load.
+
+To maximize the frame, the menu panel auto-minimizes to the right edge of the screen ([credit](https://pastebin.com/dvcH8nfY)).
 
  
 ## Patching a self-contained Comfy to include Geoff's changes

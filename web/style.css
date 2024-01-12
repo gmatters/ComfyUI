@@ -167,6 +167,20 @@ body {
 	content: '.. .. ..';
 }
 
+.comfy-menu {
+    transition: transform 330ms ease-in-out;
+    bottom: 0 !important;
+    top: 0 !important;
+    right: 0 !important;
+    position: fixed;
+    transform: translateX(calc(100% - 20px)) !important;
+    padding-left: 20px !important;
+}
+
+.comfy-menu:hover {
+    transform: translateX(0) !important;
+}
+
 .comfy-queue-btn {
 	width: 100%;
 }
